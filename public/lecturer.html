@@ -2,98 +2,89 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Lecturer Panel</title>
+  <title>Lecturer Live Stream</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.13.8/dist/livekit-client.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>Start Live Lecture</h1>
-    <input id="name" placeholder="Lecturer Name" />
-    <input id="password" type="password" placeholder="Password" />
-    <button id="goLiveBtn">Go Live</button>
+  <h1>Lecturer Panel</h1>
 
-    <div id="previewContainer" style="display:none;">
-      <h2>Your Screen Preview:</h2>
-      <video id="screenPreview" autoplay muted playsinline></video>
-    </div>
+  <label for="nameInput">Your Name:</label>
+  <input id="nameInput" type="text" placeholder="Enter your name" />
+  <label for="passwordInput">Password:</label>
+  <input id="passwordInput" type="password" placeholder="Lecturer password" />
+  <button id="goLiveBtn">Go Live</button>
 
-    <h2>Attendees</h2>
-    <ul id="attendeeList"></ul>
-  </div>
+  <div id="status"></div>
 
-  <script type="module" src="script.js"></script>
-  <script type="module">
-    import {
-      Room,
-      RoomEvent,
-      createLocalAudioTrack,
-      LocalVideoTrack,
-    } from "https://cdn.skypack.dev/livekit-client";
+  <h2>Attendees</h2>
+  <ul id="attendeeList"></ul>
 
-    const LIVEKIT_URL = "wss://religious-lectures-dh7j0hsz.livekit.cloud";
-    const ROOM_NAME = "main";
+  <script src="script.js"></script>
+  <script>
+    const goLiveBtn = document.getElementById('goLiveBtn');
+    const status = document.getElementById('status');
+    const nameInput = document.getElementById('nameInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const attendeeList = document.getElementById('attendeeList');
 
-    const goLiveBtn = document.getElementById("goLiveBtn");
-    const previewContainer = document.getElementById("previewContainer");
-    const screenPreview = document.getElementById("screenPreview");
-    const attendeeList = document.getElementById("attendeeList");
+    let room;
 
-    goLiveBtn.addEventListener("click", async () => {
-      const name = document.getElementById("name").value.trim();
-      const password = document.getElementById("password").value.trim();
-
-      if (!name || !password) {
+    goLiveBtn.onclick = async () => {
+      const identity = nameInput.value.trim();
+      const password = passwordInput.value;
+      if (!identity || !password) {
         alert("Please enter your name and password.");
         return;
       }
 
+      status.textContent = "Connecting...";
+
       try {
-        // Fetch token
-        const res = await fetch(
-          `/token?identity=${encodeURIComponent(name)}&room=${ROOM_NAME}&role=lecturer&password=${encodeURIComponent(password)}`
-        );
-        if (!res.ok) {
-          alert("Incorrect password or failed to fetch token.");
+        const tokenResp = await fetch(`/token?identity=${encodeURIComponent(identity)}&role=lecturer&password=${encodeURIComponent(password)}`);
+        const tokenData = await tokenResp.json();
+
+        if (!tokenResp.ok) {
+          status.textContent = `Error: ${tokenData.error || 'Failed to get token'}`;
           return;
         }
-        const { token } = await res.json();
 
-        // Connect to LiveKit
-        const room = new Room();
-        await room.connect(LIVEKIT_URL, token);
+        // Connect to LiveKit room
+        room = new LiveKit.Room();
 
-        // Start screen share
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        const videoTrack = new LocalVideoTrack(screenStream.getVideoTracks()[0]);
-        await room.localParticipant.publishTrack(videoTrack);
-
-        // Attach preview
-        previewContainer.style.display = "block";
-        screenPreview.srcObject = new MediaStream([videoTrack.mediaStreamTrack]);
-
-        // Publish microphone audio
-        const micTrack = await createLocalAudioTrack();
-        await room.localParticipant.publishTrack(micTrack);
-
-        // Show attendees as they join
-        room.on(RoomEvent.ParticipantConnected, (participant) => {
-          const li = document.createElement("li");
-          li.id = `user-${participant.identity}`;
+        room.on(LiveKit.RoomEvent.ParticipantConnected, participant => {
+          const li = document.createElement('li');
+          li.id = `participant-${participant.sid}`;
           li.textContent = participant.identity;
           attendeeList.appendChild(li);
         });
 
-        room.on(RoomEvent.ParticipantDisconnected, (participant) => {
-          const el = document.getElementById(`user-${participant.identity}`);
-          if (el) el.remove();
+        room.on(LiveKit.RoomEvent.ParticipantDisconnected, participant => {
+          const li = document.getElementById(`participant-${participant.sid}`);
+          if (li) li.remove();
         });
 
-        console.log("✅ You are live!");
-      } catch (err) {
-        console.error("❌ Go Live failed:", err);
-        alert("An error occurred while trying to go live.");
+        await room.connect(tokenData.room, tokenData.token);
+
+        status.textContent = "Connected. Publishing audio and screen share...";
+
+        // Publish mic audio
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const audioTrack = new LiveKit.LocalAudioTrack(audioStream.getAudioTracks()[0]);
+        await room.localParticipant.publishTrack(audioTrack);
+
+        // Publish screen share video
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const screenTrack = new LiveKit.LocalVideoTrack(screenStream.getVideoTracks()[0]);
+        await room.localParticipant.publishTrack(screenTrack);
+
+        status.textContent = "You are live!";
+
+      } catch (e) {
+        console.error(e);
+        status.textContent = "Error: " + e.message;
       }
-    });
+    };
   </script>
 </body>
 </html>

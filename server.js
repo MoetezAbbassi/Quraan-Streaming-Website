@@ -1,60 +1,41 @@
-require('dotenv').config(); // Load .env variables
-
+require('dotenv').config();
 const express = require('express');
-const path = require('path');
-const { AccessToken } = require('livekit-server-sdk');
+const { AccessToken, VideoGrant } = require('livekit-server-sdk');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// Debug: Check if password is loaded correctly
-console.log("Lecturer password from .env is:", process.env.LECTURER_PASSWORD);
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
+const LECTURER_PASSWORD = process.env.LECTURER_PASSWORD;
+const ROOM_NAME = "main";
 
-// Serve frontend files
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
-// Token endpoint
 app.get('/token', (req, res) => {
-  const { identity, room, role, password } = req.query;
+  const { identity, role, password } = req.query;
 
-  // Validate required fields
-  if (!identity || !room || !role) {
-    return res.status(400).json({ error: 'Missing required parameters.' });
+  if (!identity || !role) {
+    return res.status(400).json({ error: "Missing identity or role" });
   }
 
-  // Verify password if role is lecturer
   if (role === 'lecturer') {
-    if (password !== process.env.LECTURER_PASSWORD) {
-      console.log('⚠️ Invalid password attempt for lecturer:', password);
-      return res.status(403).json({ error: 'Invalid password' });
+    if (password !== LECTURER_PASSWORD) {
+      return res.status(401).json({ error: "Incorrect password" });
     }
   }
 
-  // Generate access token
-  try {
-    const at = new AccessToken(
-      process.env.LIVEKIT_API_KEY,
-      process.env.LIVEKIT_API_SECRET,
-      { identity }
-    );
+  // Create AccessToken for LiveKit
+  const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+    identity,
+  });
+  const grant = new VideoGrant({ room: ROOM_NAME });
+  at.addGrant(grant);
 
-    at.addGrant({
-      roomJoin: true,
-      room,
-      canPublish: role === 'lecturer',
-      canPublishData: role === 'lecturer',
-      canSubscribe: true,
-    });
-
-    const token = at.toJwt();
-    return res.json({ token });
-  } catch (err) {
-    console.error('Error generating token:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+  const token = at.toJwt();
+  res.json({ token, room: ROOM_NAME });
 });
 
-// Start the server
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
