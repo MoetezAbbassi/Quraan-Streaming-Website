@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Live Stream</title>
+  <title>Join Lecture</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h2>Live Stream</h2>
-  <video id="video" autoplay playsinline></video>
-  <script src="https://unpkg.com/livekit-client/dist/livekit-client.min.js"></script>
-  <script>
-    startViewer();
-  </script>
-  <script src="script.js"></script>
+  <div class="container">
+    <h1>Join Live Lecture</h1>
+    <input id="name" placeholder="Enter your name" />
+    <button onclick="joinAsViewer()">Join</button>
+  </div>
+
+  <script type="module" src="script.js"></script>
 </body>
 </html>

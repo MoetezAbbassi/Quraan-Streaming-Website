@@ -1,13 +1,20 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Go Live</title>
+  <title>Lecturer Panel</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h2>Lecturer Live</h2>
-  <input type="password" id="password" placeholder="Enter password" />
-  <button onclick="startBroadcast()">Start Live</button>
-  <script src="https://unpkg.com/livekit-client/dist/livekit-client.min.js"></script>
-  <script src="script.js"></script>
+  <div class="container">
+    <h1>Start Lecture</h1>
+    <input id="name" placeholder="Lecturer Name" />
+    <input id="password" type="password" placeholder="Password" />
+    <button onclick="joinAsLecturer()">Go Live</button>
+
+    <h2>Attendees</h2>
+    <ul id="attendeeList"></ul>
+  </div>
+
+  <script type="module" src="script.js"></script>
 </body>
 </html>
