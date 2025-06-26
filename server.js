@@ -1,46 +1,60 @@
-require('dotenv').config();
+require('dotenv').config(); // Load .env variables
+
 const express = require('express');
-const { AccessToken } = require('livekit-server-sdk');
 const path = require('path');
+const { AccessToken } = require('livekit-server-sdk');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static('public'));
-app.use(express.json());
+// Debug: Check if password is loaded correctly
+console.log("Lecturer password from .env is:", process.env.LECTURER_PASSWORD);
 
-function createToken(identity, isLecturer = false) {
-  const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
-    identity,
-    ttl: 60 * 60, // 1 hour
-  });
+// Serve frontend files
+app.use(express.static(path.join(__dirname, 'public')));
 
-  at.addGrant({
-    roomJoin: true,
-    room: 'main-room',
-    canPublish: isLecturer,
-    canSubscribe: true,
-  });
+// Token endpoint
+app.get('/token', (req, res) => {
+  const { identity, room, role, password } = req.query;
 
-  return at.toJwt();
-}
-
-app.post('/token', (req, res) => {
-  const { role, password } = req.body;
-
-  if (role === 'lecturer') {
-    if (password !== process.env.LECTURER_PASSWORD) {
-      return res.status(403).json({ error: 'Invalid password' });
-    }
-    const token = createToken('lecturer-' + Date.now(), true);
-    return res.json({ token, url: process.env.LIVEKIT_URL });
+  // Validate required fields
+  if (!identity || !room || !role) {
+    return res.status(400).json({ error: 'Missing required parameters.' });
   }
 
-  // Viewer
-  const token = createToken('viewer-' + Date.now(), false);
-  return res.json({ token, url: process.env.LIVEKIT_URL });
+  // Verify password if role is lecturer
+  if (role === 'lecturer') {
+    if (password !== process.env.LECTURER_PASSWORD) {
+      console.log('⚠️ Invalid password attempt for lecturer:', password);
+      return res.status(403).json({ error: 'Invalid password' });
+    }
+  }
+
+  // Generate access token
+  try {
+    const at = new AccessToken(
+      process.env.LIVEKIT_API_KEY,
+      process.env.LIVEKIT_API_SECRET,
+      { identity }
+    );
+
+    at.addGrant({
+      roomJoin: true,
+      room,
+      canPublish: role === 'lecturer',
+      canPublishData: role === 'lecturer',
+      canSubscribe: true,
+    });
+
+    const token = at.toJwt();
+    return res.json({ token });
+  } catch (err) {
+    console.error('Error generating token:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
+// Start the server
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
