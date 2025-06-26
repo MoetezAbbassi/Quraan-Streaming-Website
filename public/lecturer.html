@@ -1,20 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Lecturer Panel</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
-    <h1>Start Lecture</h1>
+    <h1>Start Live Lecture</h1>
     <input id="name" placeholder="Lecturer Name" />
     <input id="password" type="password" placeholder="Password" />
-    <button onclick="joinAsLecturer()">Go Live</button>
+    <button id="goLiveBtn">Go Live</button>
 
     <h2>Attendees</h2>
     <ul id="attendeeList"></ul>
   </div>
 
-  <script type="module" src="script.js"></script>
+  <script type="module">
+    import {
+      Room,
+      RoomEvent,
+      createLocalAudioTrack,
+      createLocalVideoTrack
+    } from "https://cdn.skypack.dev/livekit-client";
+
+    const LIVEKIT_URL = location.origin.replace(/^http/, 'ws');
+    const ROOM_NAME = "main";
+
+    document.getElementById("goLiveBtn").addEventListener("click", async () => {
+      const name = document.getElementById("name").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!name || !password) {
+        alert("Please enter your name and password.");
+        return;
+      }
+
+      const res = await fetch(`/token?identity=${encodeURIComponent(name)}&room=${ROOM_NAME}&role=lecturer&password=${encodeURIComponent(password)}`);
+      if (!res.ok) {
+        alert("Incorrect password or failed to fetch token.");
+        return;
+      }
+
+      const { token } = await res.json();
+      const room = new Room();
+
+      room.on(RoomEvent.ParticipantConnected, (participant) => {
+        const li = document.createElement("li");
+        li.id = `user-${participant.identity}`;
+        li.textContent = participant.identity;
+        document.getElementById("attendeeList").appendChild(li);
+      });
+
+      room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        const el = document.getElementById(`user-${participant.identity}`);
+        if (el) el.remove();
+      });
+
+      await room.connect(LIVEKIT_URL, token);
+
+      const audioTrack = await createLocalAudioTrack();
+      await room.localParticipant.publishTrack(audioTrack);
+
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const screenTrack = screenStream.getVideoTracks()[0];
+      await room.localParticipant.publishTrack(screenTrack);
+    });
+  </script>
 </body>
 </html>
