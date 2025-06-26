@@ -2,16 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Join Lecture</title>
+  <title>Live Lecture Attendee</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <h1>Join Live Lecture</h1>
-    <input id="name" placeholder="Enter your name" />
-    <button onclick="joinAsViewer()">Join</button>
+    <input id="name" placeholder="Your Name" />
+    <button id="joinBtn">Join</button>
+
+    <h2>Live Audio</h2>
+    <audio id="liveAudio" controls autoplay></audio>
   </div>
 
   <script type="module" src="script.js"></script>
+  <script type="module">
+    import { Room, RoomEvent } from "https://cdn.skypack.dev/livekit-client";
+
+    const LIVEKIT_URL = "wss://religious-lectures-dh7j0hsz.livekit.cloud";
+    const ROOM_NAME = "main";
+
+    const joinBtn = document.getElementById("joinBtn");
+    const liveAudio = document.getElementById("liveAudio");
+
+    joinBtn.addEventListener("click", async () => {
+      const name = document.getElementById("name").value.trim();
+      if (!name) {
+        alert("Please enter your name.");
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/token?identity=${encodeURIComponent(name)}&room=${ROOM_NAME}&role=attendee`
+        );
+        if (!res.ok) {
+          alert("Failed to get token.");
+          return;
+        }
+        const { token } = await res.json();
+
+        const room = new Room();
+        await room.connect(LIVEKIT_URL, token);
+
+        // Subscribe to all tracks and play audio tracks
+        room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          if (track.kind === "audio") {
+            liveAudio.srcObject = new MediaStream([track.mediaStreamTrack]);
+            liveAudio.play();
+          }
+        });
+
+        room.on(RoomEvent.ParticipantConnected, (participant) => {
+          console.log(`${participant.identity} joined`);
+        });
+
+        room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+          console.log(`${participant.identity} left`);
+          liveAudio.srcObject = null;
+        });
+
+        console.log("✅ Joined live lecture");
+      } catch (err) {
+        console.error("❌ Join failed:", err);
+        alert("An error occurred while joining.");
+      }
+    });
+  </script>
 </body>
 </html>
