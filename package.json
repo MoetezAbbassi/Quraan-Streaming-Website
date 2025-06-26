@@ -5,9 +5,10 @@
   "scripts": {
     "start": "node server.js"
   },
-  "dependencies": {
+    "dependencies": {
     "express": "^4.18.2",
     "dotenv": "^16.3.1",
-    "livekit-server-sdk": "^0.16.1"
-  }
+    "livekit-server-sdk": "^1.0.2"
+    }
+
 }
