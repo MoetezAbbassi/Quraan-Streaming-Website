@@ -1,32 +1,47 @@
-import {
-  Room,
-  RoomEvent
-} from "https://cdn.skypack.dev/livekit-client";
+require('dotenv').config();
+const express = require('express');
+const { AccessToken, VideoGrant } = require('livekit-server-sdk');
 
-const LIVEKIT_URL = location.origin.replace(/^http/, 'ws');
-const ROOM_NAME = 'main';
+const app = express();
+const PORT = process.env.PORT || 10000;
 
-window.joinAsViewer = async function () {
-  const name = document.getElementById('name').value.trim();
-  if (!name) {
-    alert('Please enter your name.');
-    return;
-  }
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
+const LECTURER_PASSWORD = process.env.LECTURER_PASSWORD;
+const ROOM_NAME = "main";
 
-  const res = await fetch(`/token?identity=${encodeURIComponent(name)}&room=${ROOM_NAME}&role=viewer`);
-  const { token } = await res.json();
+if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+  console.error("ERROR: LIVEKIT_API_KEY or LIVEKIT_API_SECRET not set in .env");
+  process.exit(1);
+}
 
-  const room = new Room();
+app.use(express.static('public'));
 
-  room.on(RoomEvent.TrackSubscribed, (track) => {
-    if (track.kind === 'video') {
-      const video = track.attach();
-      document.body.appendChild(video);
-    } else if (track.kind === 'audio') {
-      const audio = track.attach();
-      audio.play();
+app.get('/token', (req, res) => {
+  try {
+    const { identity, role, password } = req.query;
+
+    if (!identity || !role) {
+      return res.status(400).json({ error: "Missing identity or role" });
     }
-  });
 
-  await room.connect(LIVEKIT_URL, token);
-};
+    if (role === 'lecturer' && password !== LECTURER_PASSWORD) {
+      return res.status(401).json({ error: "Incorrect password" });
+    }
+
+    const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, { identity });
+    const grant = new VideoGrant({ room: ROOM_NAME });
+    at.addGrant(grant);
+
+    const token = at.toJwt();
+    res.json({ token, room: ROOM_NAME });
+
+  } catch (err) {
+    console.error('Token generation error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
