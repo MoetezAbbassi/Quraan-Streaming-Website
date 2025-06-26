@@ -12,6 +12,11 @@
     <input id="password" type="password" placeholder="Password" />
     <button id="goLiveBtn">Go Live</button>
 
+    <div id="previewContainer">
+      <h2>Your Screen Preview:</h2>
+      <video id="screenPreview" autoplay muted playsinline></video>
+    </div>
+
     <h2>Attendees</h2>
     <ul id="attendeeList"></ul>
   </div>
@@ -21,7 +26,7 @@
       Room,
       RoomEvent,
       createLocalAudioTrack,
-      createLocalVideoTrack
+      Track
     } from "https://cdn.skypack.dev/livekit-client";
 
     const LIVEKIT_URL = location.origin.replace(/^http/, 'ws');
@@ -36,35 +41,51 @@
         return;
       }
 
-      const res = await fetch(`/token?identity=${encodeURIComponent(name)}&room=${ROOM_NAME}&role=lecturer&password=${encodeURIComponent(password)}`);
-      if (!res.ok) {
-        alert("Incorrect password or failed to fetch token.");
-        return;
+      try {
+        // Fetch token
+        const res = await fetch(`/token?identity=${encodeURIComponent(name)}&room=${ROOM_NAME}&role=lecturer&password=${encodeURIComponent(password)}`);
+        if (!res.ok) {
+          alert("Incorrect password or failed to fetch token.");
+          return;
+        }
+
+        const { token } = await res.json();
+
+        // Connect to LiveKit
+        const room = new Room();
+        await room.connect(LIVEKIT_URL, token);
+
+        // Start screen share
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = new Track(screenStream.getVideoTracks()[0]);
+        await room.localParticipant.publishTrack(screenTrack);
+
+        // Attach screen to preview
+        const preview = document.getElementById("screenPreview");
+        preview.srcObject = new MediaStream([screenTrack.mediaStreamTrack]);
+
+        // Publish audio
+        const mic = await createLocalAudioTrack();
+        await room.localParticipant.publishTrack(mic);
+
+        // Show attendees
+        room.on(RoomEvent.ParticipantConnected, (participant) => {
+          const li = document.createElement("li");
+          li.id = `user-${participant.identity}`;
+          li.textContent = participant.identity;
+          document.getElementById("attendeeList").appendChild(li);
+        });
+
+        room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+          const el = document.getElementById(`user-${participant.identity}`);
+          if (el) el.remove();
+        });
+
+        console.log("✅ You are live!");
+      } catch (err) {
+        console.error("❌ Go Live failed:", err);
+        alert("An error occurred while trying to go live.");
       }
-
-      const { token } = await res.json();
-      const room = new Room();
-
-      room.on(RoomEvent.ParticipantConnected, (participant) => {
-        const li = document.createElement("li");
-        li.id = `user-${participant.identity}`;
-        li.textContent = participant.identity;
-        document.getElementById("attendeeList").appendChild(li);
-      });
-
-      room.on(RoomEvent.ParticipantDisconnected, (participant) => {
-        const el = document.getElementById(`user-${participant.identity}`);
-        if (el) el.remove();
-      });
-
-      await room.connect(LIVEKIT_URL, token);
-
-      const audioTrack = await createLocalAudioTrack();
-      await room.localParticipant.publishTrack(audioTrack);
-
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const screenTrack = screenStream.getVideoTracks()[0];
-      await room.localParticipant.publishTrack(screenTrack);
     });
   </script>
 </body>

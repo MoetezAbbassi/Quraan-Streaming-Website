@@ -44,3 +44,14 @@ ul {
   text-align: left;
   margin-top: 1rem;
 }
+
+
+#previewContainer {
+  margin-top: 20px;
+}
+
+#screenPreview {
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.1);
+}
