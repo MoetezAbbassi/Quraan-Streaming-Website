@@ -1,23 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Lecturer Panel</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/livekit-client/dist/livekit-client.js"></script>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/livekit-client/dist/livekit-client.min.js"></script>
 </head>
 <body>
+  <header><h1>Lecturer Dashboard</h1></header>
   <div class="container">
-    <header><h1>Lecturer Login</h1></header>
-    <form id="loginForm">
-      <input type="password" id="password" placeholder="Enter Lecturer Password" required>
-      <button type="submit">Start Lecture</button>
-    </form>
-    <div id="streamingUI" style="display:none;">
-      <video id="screenShare" autoplay muted></video>
-      <button id="endBtn">End Lecture</button>
+    <div id="login-panel">
+      <input type="password" id="pwd" placeholder="Lecturer Password" />
+      <button id="btnLogin" class="btn">Login</button>
+    </div>
+
+    <div id="stream-panel" class="hidden">
+      <h2>Screen Preview + Controls</h2>
+      <video id="preview" autoplay muted></video>
+      <div class="controls">
+        <button id="btnShare" class="btn">🔗 Share Screen</button>
+        <button id="btnMute" class="btn">Mute Mic</button>
+        <button id="btnEnd" class="btn">End Lecture</button>
+      </div>
     </div>
   </div>
-  <script type="module" src="lecturer.js"></script>
+  <script src="lecturer.js"></script>
 </body>
 </html>

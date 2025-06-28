@@ -1,30 +1,29 @@
-import { connect } from 'livekit-client';
+const { connect } = window.livekitClient;
 
-const joinBtn = document.getElementById('joinBtn');
-const attendUI = document.getElementById('attendUI');
-const attendeeVideo = document.getElementById('attendeeVideo');
-const downloadBtn = document.getElementById('downloadBtn');
+const joinPanel = document.getElementById("join-panel");
+const attendPanel = document.getElementById("attend-panel");
+const btnJoin = document.getElementById("btnJoin");
+const attVideo = document.getElementById("attVideo");
+const btnDownload = document.getElementById("btnDownload");
 
-joinBtn.addEventListener('click', async () => {
-  const name = document.getElementById('nameInput').value || `Guest${Math.floor(Math.random()*1000)}`;
-  // These factors are placeholders—you'd get a valid token from your backend in prod.
-  const token = prompt('Paste attendee token from backend'); 
-  const room = await connect('wss://religious-lectures-dh7j0hsz.livekit.cloud', token, { audio: true, video: false });
-  
-  room.on('trackSubscribed', (track, publication, participant) => {
-    if (track.kind === 'video' || track.kind === 'audio') {
-      const stream = new MediaStream([track.mediaStreamTrack]);
-      attendeeVideo.srcObject = stream;
-      attendeeVideo.play();
-    }
+btnJoin.onclick = async () => {
+  const name = document.getElementById("name").value || `Guest${Math.floor(Math.random()*1000)}`;
+  const token = prompt("Please paste your attendee token"); // placeholder
+
+  const room = await connect("wss://religious-lectures-dh7j0hsz.livekit.cloud", token, {
+    audio: true, video: false
   });
 
-  joinBtn.disabled = true;
-  attendUI.style.display = 'block';
-
-  downloadBtn.addEventListener('click', () => {
-    const mediaStream = attendeeVideo.srcObject;
-    // Download logic via MediaRecorder or server-side recording.
-    alert('Implement download server or MediaRecorder here');
+  room.on("trackSubscribed", (track) => {
+    const ms = new MediaStream([track.mediaStreamTrack]);
+    attVideo.srcObject = ms;
+    attVideo.play();
   });
-});
+
+  joinPanel.classList.add("hidden");
+  attendPanel.classList.remove("hidden");
+
+  btnDownload.onclick = () => {
+    alert("Implement server-side recording or MediaRecorder client-side.");
+  };
+};

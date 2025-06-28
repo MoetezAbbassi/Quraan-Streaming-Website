@@ -1,4 +1,4 @@
-import { connect, Room } from 'livekit-client';
+const { connect } = window.livekitClient;
 
 const loginForm = document.getElementById('loginForm');
 const streamingUI = document.getElementById('streamingUI');
