@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { AccessToken } from "livekit-server-sdk";
-import path from "path";
+
 dotenv.config();
 
 const {
@@ -15,10 +15,8 @@ const log = (lvl, msg) => console.log(`[${lvl}] ${msg}`);
 app.use(express.json());
 app.use(express.static("public"));
 
-// Redirect root to attendee page
 app.get("/", (req, res) => res.redirect("/attendee.html"));
 
-// Lecturer-login endpoint
 app.post("/lecturer/login", (req, res) => {
   const { password } = req.body;
   if (password !== LECTURER_PASSWORD) return res.status(401).json({ error: "Invalid password" });
@@ -35,7 +33,7 @@ app.post("/lecturer/login", (req, res) => {
   });
 
   const jwt = at.toJwt();
-  log("INFO", `Lecturer authenticated as Moez`);
+  log("INFO", `Lecturer authenticated`);
   res.json({ token: jwt, url: LIVEKIT_URL });
 });
 
