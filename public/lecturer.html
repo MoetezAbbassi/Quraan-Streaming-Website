@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Lecturer Panel — Quraan Streaming</title>
+  <title>Lecturer Panel — Quraan Stream</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://unpkg.com/livekit-client/dist/livekit-client.min.js"></script>
+  <!-- Load the UMD bundle correctly -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/livekit-client/2.14.0/livekit-client.umd.min.js"></script>
 </head>
 <body>
   <header><h1>Lecturer Dashboard</h1></header>
@@ -28,13 +29,14 @@
     (async function init() {
       console.log("[init] Starting lecturer UI...");
 
-      if (!window.livekitClient || !window.livekitClient.connect) {
-        console.error("[init] livekit-client failed to load!");
-        alert("Error: livekit-client did not load. Check your network and script tag.");
+      // Check for UMD global
+      if (!window.LivekitClient || !window.LivekitClient.connect) {
+        console.error("[init] LivekitClient not found!");
+        alert("Error: LivekitClient failed to load. Check the script URL.");
         return;
       }
-      const { connect } = window.livekitClient;
-      console.log("[init] livekit-client loaded successfully.");
+      const { connect } = window.LivekitClient;
+      console.log("[init] LivekitClient loaded!");
 
       const loginPanel = document.getElementById("login-panel");
       const streamPanel = document.getElementById("stream-panel");
@@ -44,56 +46,62 @@
       const btnMute = document.getElementById("btnMute");
       const btnEnd = document.getElementById("btnEnd");
 
-      let room, micEnabled = true;
+      let room;
+      let micEnabled = true;
 
       btnLogin.onclick = async () => {
-        console.log("[Login] Button clicked");
+        console.log("[Login] Clicked");
         const pwd = document.getElementById("pwd").value;
-        console.log("[Login] Password entered:", pwd);
+        console.log("[Login] Pwd:", pwd);
+
         try {
           const resp = await fetch("/lecturer/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ password: pwd })
           });
-          console.log("[Login] Response:", resp.status);
-          if (!resp.ok) throw new Error("Auth failed");
-          const data = await resp.json();
-          console.log("[Login] Received token/url.");
-          room = await connect(data.url, data.token, { audio: true });
-          console.log("[LiveKit] Connected as lecturer.");
+          console.log("[Login] HTTP status:", resp.status);
+          if (!resp.ok) throw new Error("Bad login");
+          const { token, url } = await resp.json();
+          console.log("[Login] Got token/url");
+
+          room = await connect(url, token, { audio: true });
+          console.log("[LiveKit] Connected");
+
           loginPanel.classList.add("hidden");
           streamPanel.classList.remove("hidden");
-        } catch (e) {
-          console.error("[Login] Error:", e);
-          alert("Login failed: " + e.message);
+        } catch (err) {
+          console.error("[Login] Error:", err);
+          alert("Login failed: " + err.message);
         }
       };
 
       btnShare.onclick = async () => {
         if (!room) return alert("Not connected");
         try {
-          console.log("[Share] Attempting screen share...");
+          console.log("[Share] Requesting screen share...");
           const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-          const [pubTrack] = room.localParticipant.publishStream(stream);
-          preview.srcObject = new MediaStream([pubTrack.mediaStreamTrack]);
-          console.log("[Share] Screen shared successfully.");
-        } catch (e) {
-          console.error("[Share] Error:", e);
+          const [publication] = room.localParticipant.publishStream(stream);
+          preview.srcObject = new MediaStream([publication.mediaStreamTrack]);
+          console.log("[Share] Screen shared");
+        } catch (err) {
+          console.error("[Share] Error:", err);
         }
       };
 
       btnMute.onclick = () => {
         if (!room) return;
         micEnabled = !micEnabled;
-        room.localParticipant.audioTracks.forEach(t => t.track.setMuted(!micEnabled));
+        room.localParticipant.audioTracks.forEach(pub =>
+          pub.track.setMuted(!micEnabled)
+        );
         btnMute.textContent = micEnabled ? "Mute Mic" : "Unmute Mic";
-        console.log("[Mute] Mic:", micEnabled ? "ON" : "OFF");
+        console.log("[Mute] Mic enabled:", micEnabled);
       };
 
       btnEnd.onclick = () => {
         if (room) room.disconnect();
-        console.log("[End] Lecture ended; reloading...");
+        console.log("[End] Lecture ended");
         location.reload();
       };
     })();
