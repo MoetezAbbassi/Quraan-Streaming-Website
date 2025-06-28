@@ -13,12 +13,12 @@ async function connectToRoom(identity, role, password = "") {
       throw new Error(errorText);
     }
 
-    const { token } = await res.json();
+    const { token, room } = await res.json();
     setStatus("🔗 Connecting to room...");
 
-    const room = new window.LiveKit.Room();
+    const roomInstance = new window.LiveKit.Room();
 
-    room.on(window.LiveKit.RoomEvent.ParticipantConnected, (participant) => {
+    roomInstance.on(window.LiveKit.RoomEvent.ParticipantConnected, (participant) => {
       console.log(`✅ ${participant.identity} joined`);
       const list = document.getElementById("attendeeList");
       if (list) {
@@ -29,12 +29,12 @@ async function connectToRoom(identity, role, password = "") {
       }
     });
 
-    room.on(window.LiveKit.RoomEvent.ParticipantDisconnected, (participant) => {
+    roomInstance.on(window.LiveKit.RoomEvent.ParticipantDisconnected, (participant) => {
       const li = document.getElementById(`participant-${participant.sid}`);
       if (li) li.remove();
     });
 
-    room.on(window.LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+    roomInstance.on(window.LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
       if (track.kind === "video") {
         const container = document.getElementById("videoContainer");
         if (container) {
@@ -52,19 +52,19 @@ async function connectToRoom(identity, role, password = "") {
       }
     });
 
-    await room.connect(window.LIVEKIT_URL, token);
+    await roomInstance.connect(room, token);
     setStatus("✅ Connected");
 
     if (role === "lecturer") {
       setStatus("🎙 Publishing audio...");
       const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioTrack = new window.LiveKit.LocalAudioTrack(micStream.getAudioTracks()[0]);
-      await room.localParticipant.publishTrack(audioTrack);
+      await roomInstance.localParticipant.publishTrack(audioTrack);
 
       setStatus("🖥 Starting screenshare...");
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const screenTrack = new window.LiveKit.LocalVideoTrack(screenStream.getVideoTracks()[0]);
-      await room.localParticipant.publishTrack(screenTrack);
+      await roomInstance.localParticipant.publishTrack(screenTrack);
 
       setStatus("🚀 You are live!");
     }

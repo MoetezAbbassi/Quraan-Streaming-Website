@@ -1,41 +1,50 @@
-require('dotenv').config();
-const express = require('express');
-const { AccessToken, VideoGrant } = require('livekit-server-sdk');
+require("dotenv").config();
+const express = require("express");
+const path = require("path");
+const { AccessToken } = require("livekit-server-sdk");
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const port = process.env.PORT || 10000;
 
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
-const LECTURER_PASSWORD = process.env.LECTURER_PASSWORD;
-const ROOM_NAME = "main";
+// Serve static files from public/
+app.use(express.static(path.join(__dirname, "public")));
 
-app.use(express.static('public'));
-
-app.get('/token', (req, res) => {
+// Token route
+app.get("/token", (req, res) => {
   const { identity, role, password } = req.query;
 
   if (!identity || !role) {
     return res.status(400).json({ error: "Missing identity or role" });
   }
 
-  if (role === 'lecturer') {
-    if (password !== LECTURER_PASSWORD) {
-      return res.status(401).json({ error: "Incorrect password" });
-    }
+  if (role === "lecturer" && password !== process.env.LECTURER_PASSWORD) {
+    return res.status(401).json({ error: "Incorrect password" });
   }
 
-  // Create AccessToken for LiveKit
-  const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
-    identity,
-  });
-  const grant = new VideoGrant({ room: ROOM_NAME });
-  at.addGrant(grant);
+  const roomName = "main";
+  const grant = {
+    room: roomName,
+    roomJoin: true,
+    canPublish: role === "lecturer",
+    canPublishData: role === "lecturer",
+    canSubscribe: true,
+  };
 
-  const token = at.toJwt();
-  res.json({ token, room: ROOM_NAME });
+  const token = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
+    identity,
+    ttl: 60 * 60,
+  });
+  token.addGrant({ video: grant });
+
+  const jwt = token.toJwt();
+
+  res.json({
+    token: jwt,
+    room: process.env.LIVEKIT_URL,
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+// Start server
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
 });
