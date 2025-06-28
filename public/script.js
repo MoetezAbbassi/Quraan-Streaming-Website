@@ -14,21 +14,21 @@ async function connectToRoom(identity, role, password = '') {
       return;
     }
 
-    const room = new window.LiveKit.Room();
+    const room = new window.Livekit.Room();
 
-    room.on(window.LiveKit.RoomEvent.ParticipantConnected, participant => {
+    room.on(window.Livekit.RoomEvent.ParticipantConnected, participant => {
       const li = document.createElement('li');
       li.id = `participant-${participant.sid}`;
       li.textContent = participant.identity;
       if (attendeeList) attendeeList.appendChild(li);
     });
 
-    room.on(window.LiveKit.RoomEvent.ParticipantDisconnected, participant => {
+    room.on(window.Livekit.RoomEvent.ParticipantDisconnected, participant => {
       const li = document.getElementById(`participant-${participant.sid}`);
       if (li) li.remove();
     });
 
-    room.on(window.LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+    room.on(window.Livekit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
       if (track.kind === 'video') {
         const videoElement = document.createElement('video');
         videoElement.autoplay = true;
@@ -51,11 +51,11 @@ async function connectToRoom(identity, role, password = '') {
 
     if (role === 'lecturer') {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const audioTrack = new window.LiveKit.LocalAudioTrack(audioStream.getAudioTracks()[0]);
+      const audioTrack = new window.Livekit.LocalAudioTrack(audioStream.getAudioTracks()[0]);
       await room.localParticipant.publishTrack(audioTrack);
 
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const screenTrack = new window.LiveKit.LocalVideoTrack(screenStream.getVideoTracks()[0]);
+      const screenTrack = new window.Livekit.LocalVideoTrack(screenStream.getVideoTracks()[0]);
       await room.localParticipant.publishTrack(screenTrack);
     }
   } catch (err) {
