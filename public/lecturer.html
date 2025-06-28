@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>Lecturer Live Stream</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.13.8/dist/livekit-client.min.js"></script>
 </head>
 <body>
   <h1>Lecturer Panel</h1>
@@ -15,21 +14,26 @@
   <input id="passwordInput" type="password" placeholder="Lecturer password" />
   <button id="goLiveBtn">Go Live</button>
 
-  <div id="status">Not connected</div>
+  <div id="status"></div>
+
   <h2>Attendees</h2>
   <ul id="attendeeList"></ul>
   <div id="videoContainer"></div>
 
+  <!-- Load LiveKit first -->
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.13.8/dist/livekit-client.min.js"></script>
+  <!-- Then your script -->
   <script src="script.js"></script>
   <script>
-    document.getElementById('goLiveBtn').onclick = () => {
-      const identity = document.getElementById('nameInput').value.trim();
-      const password = document.getElementById('passwordInput').value;
+    document.getElementById("goLiveBtn").onclick = async () => {
+      const identity = document.getElementById("nameInput").value.trim();
+      const password = document.getElementById("passwordInput").value;
       if (!identity || !password) {
         alert("Please enter your name and password.");
         return;
       }
-      connectToRoom(identity, "lecturer", password);
+
+      await connectToRoom(identity, "lecturer", password);
     };
   </script>
 </body>
