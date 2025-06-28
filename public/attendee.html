@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Attendee View</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/livekit-client/dist/livekit-client.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header><h1>Join Lecture</h1></header>
+    <input id="nameInput" placeholder="Your name (optional)" />
+    <button id="joinBtn">Join</button>
+    <div id="attendUI" style="display:none;">
+      <video id="attendeeVideo" autoplay controls></video>
+      <button id="downloadBtn">Download Recording</button>
+    </div>
+  </div>
+  <script type="module" src="attendee.js"></script>
+</body>
+</html>

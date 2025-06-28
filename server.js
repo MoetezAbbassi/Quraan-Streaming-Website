@@ -1,45 +1,21 @@
-require('dotenv').config();
-const express = require('express');
-const path = require('path');
-const { AccessToken } = require('livekit-server-sdk');
+// server.js
+import express from 'express';
+import dotenv from 'dotenv';
+import lecturerRouter from './routes/lecturer.js';
+import path from 'path';
+
+dotenv.config();
 const app = express();
+const log = (level, msg) => console.log(`[${level}] ${msg}`);
 
-const {
-  LIVEKIT_API_KEY,
-  LIVEKIT_API_SECRET,
-  LIVEKIT_URL,
-  LECTURER_PASSWORD,
-} = process.env;
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve public frontend
+app.use(express.static('public'));
 
-app.get('/token', async (req, res) => {
-  const { identity, role, password } = req.query;
+// Lecturer authentication and token generation
+app.use('/lecturer', lecturerRouter);
 
-  if (!identity || !role) {
-    return res.status(400).json({ error: 'Missing identity or role' });
-  }
-
-  if (role === 'lecturer' && password !== LECTURER_PASSWORD) {
-    return res.status(401).json({ error: 'Incorrect password' });
-  }
-
-  const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
-    identity,
-  });
-
-  token.addGrant({
-    roomJoin: true,
-    room: 'main',
-    canPublish: role === 'lecturer',
-    canPublishData: true,
-    canSubscribe: true,
-  });
-
-  res.json({ token: token.toJwt(), room: LIVEKIT_URL });
-});
-
-const port = process.env.PORT || 10000;
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => log('INFO', `Server listening on port ${PORT}`));

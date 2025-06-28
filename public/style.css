@@ -1,44 +1,6 @@
-body {
-  font-family: Arial, sans-serif;
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #f9f9f9;
-  color: #333;
-}
-
-h1, h2 {
-  color: #2c3e50;
-}
-
-input, button {
-  padding: 8px;
-  margin: 5px 0 15px 0;
-  width: 100%;
-  box-sizing: border-box;
-  font-size: 1rem;
-}
-
-button {
-  background-color: #2980b9;
-  color: white;
-  border: none;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-button:hover {
-  background-color: #3498db;
-}
-
-#status {
-  margin-bottom: 10px;
-  font-weight: bold;
-  color: #e67e22;
-}
-
-video, audio {
-  background: black;
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
+body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+.container { padding: 20px; }
+header { background: #004aad; color: white; padding: 10px; text-align: center; }
+button { padding: 10px 20px; margin: 10px 0; }
+video { width: 100%; max-width: 800px; }
+#screenShare { border: 2px solid #ccc; margin-top: 20px; }

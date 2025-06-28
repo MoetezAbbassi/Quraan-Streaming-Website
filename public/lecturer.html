@@ -1,40 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Lecturer Live Stream</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Lecturer Panel</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/livekit-client/dist/livekit-client.js"></script>
 </head>
 <body>
-  <h1>Lecturer Panel</h1>
-
-  <label for="nameInput">Your Name:</label>
-  <input id="nameInput" type="text" placeholder="Enter your name" />
-  <label for="passwordInput">Password:</label>
-  <input id="passwordInput" type="password" placeholder="Lecturer password" />
-  <button id="goLiveBtn">Go Live</button>
-
-  <div id="status"></div>
-
-  <h2>Attendees</h2>
-  <ul id="attendeeList"></ul>
-  <div id="videoContainer"></div>
-
-  <!-- Load LiveKit first -->
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.13.8/dist/livekit-client.min.js"></script>
-  <!-- Then your script -->
-  <script src="script.js"></script>
-  <script>
-    document.getElementById("goLiveBtn").onclick = async () => {
-      const identity = document.getElementById("nameInput").value.trim();
-      const password = document.getElementById("passwordInput").value;
-      if (!identity || !password) {
-        alert("Please enter your name and password.");
-        return;
-      }
-
-      await connectToRoom(identity, "lecturer", password);
-    };
-  </script>
+  <div class="container">
+    <header><h1>Lecturer Login</h1></header>
+    <form id="loginForm">
+      <input type="password" id="password" placeholder="Enter Lecturer Password" required>
+      <button type="submit">Start Lecture</button>
+    </form>
+    <div id="streamingUI" style="display:none;">
+      <video id="screenShare" autoplay muted></video>
+      <button id="endBtn">End Lecture</button>
+    </div>
+  </div>
+  <script type="module" src="lecturer.js"></script>
 </body>
 </html>
