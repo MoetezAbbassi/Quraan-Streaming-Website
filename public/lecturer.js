@@ -1,4 +1,19 @@
-document.addEventListener("DOMContentLoaded", () => {
+(async function initLecturerApp() {
+  // Wait for DOM content
+  await new Promise(res => {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", res);
+    } else {
+      res();
+    }
+  });
+
+  // Wait for livekit-client to load
+  while (!window.livekitClient || !window.livekitClient.connect) {
+    console.log("[WAIT] Waiting for livekit-client to load...");
+    await new Promise(r => setTimeout(r, 100));
+  }
+
   const { connect } = window.livekitClient;
 
   const loginPanel = document.getElementById("login-panel");
@@ -13,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   btnLogin.onclick = async () => {
     const pwd = document.getElementById("pwd").value;
+    console.log("[Login] Attempting with password:", pwd);
 
     try {
       const resp = await fetch("/lecturer/login", {
@@ -27,7 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const { token, url } = await resp.json();
+      console.log("[Login] Token received, connecting...");
+
       room = await connect(url, token, { audio: true });
+      console.log("[LiveKit] Connected");
 
       loginPanel.classList.add("hidden");
       streamPanel.classList.remove("hidden");
@@ -60,4 +79,4 @@ document.addEventListener("DOMContentLoaded", () => {
     if (room) room.disconnect();
     location.reload();
   };
-});
+})();
