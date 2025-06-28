@@ -15,74 +15,21 @@
   <input id="passwordInput" type="password" placeholder="Lecturer password" />
   <button id="goLiveBtn">Go Live</button>
 
-  <div id="status"></div>
-
+  <div id="status">Not connected</div>
   <h2>Attendees</h2>
   <ul id="attendeeList"></ul>
+  <div id="videoContainer"></div>
 
   <script src="script.js"></script>
   <script>
-    const goLiveBtn = document.getElementById('goLiveBtn');
-    const status = document.getElementById('status');
-    const nameInput = document.getElementById('nameInput');
-    const passwordInput = document.getElementById('passwordInput');
-    const attendeeList = document.getElementById('attendeeList');
-
-    let room;
-
-    goLiveBtn.onclick = async () => {
-      const identity = nameInput.value.trim();
-      const password = passwordInput.value;
+    document.getElementById('goLiveBtn').onclick = () => {
+      const identity = document.getElementById('nameInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
       if (!identity || !password) {
         alert("Please enter your name and password.");
         return;
       }
-
-      status.textContent = "Connecting...";
-
-      try {
-        const resp = await fetch(`/token?identity=${encodeURIComponent(identity)}&role=lecturer&password=${encodeURIComponent(password)}`);
-        const data = await resp.json();
-
-        if (!resp.ok) {
-          status.textContent = `Error: ${data.error || 'Failed to get token'}`;
-          return;
-        }
-
-        room = new LiveKit.Room();
-
-        room.on(LiveKit.RoomEvent.ParticipantConnected, participant => {
-          const li = document.createElement('li');
-          li.id = `participant-${participant.sid}`;
-          li.textContent = participant.identity;
-          attendeeList.appendChild(li);
-        });
-
-        room.on(LiveKit.RoomEvent.ParticipantDisconnected, participant => {
-          const li = document.getElementById(`participant-${participant.sid}`);
-          if (li) li.remove();
-        });
-
-        await room.connect(data.room, data.token);
-
-        status.textContent = "Connected. Publishing audio and screen share...";
-
-        // Publish mic audio
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        const audioTrack = new LiveKit.LocalAudioTrack(audioStream.getAudioTracks()[0]);
-        await room.localParticipant.publishTrack(audioTrack);
-
-        // Publish screen share video
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-        const screenTrack = new LiveKit.LocalVideoTrack(screenStream.getVideoTracks()[0]);
-        await room.localParticipant.publishTrack(screenTrack);
-
-        status.textContent = "You are live!";
-
-      } catch (e) {
-        console.error(e);
-        status.textContent = "Error: " + e.message;
-      }
+      connectToRoom(identity, "lecturer", password);
     };
   </script>
 </body>

@@ -1,75 +1,65 @@
-async function connectToRoom(identity, role, password = "") {
-  const statusEl = document.getElementById("status");
-  function setStatus(msg) {
-    if (statusEl) statusEl.textContent = msg;
-  }
+async function connectToRoom(identity, role, password = '') {
+  const status = document.getElementById('status');
+  const attendeeList = document.getElementById('attendeeList');
+  const videoContainer = document.getElementById('videoContainer');
+
+  status.textContent = "Connecting...";
 
   try {
-    setStatus("🔐 Requesting token...");
-
     const res = await fetch(`/token?identity=${encodeURIComponent(identity)}&role=${role}&password=${encodeURIComponent(password)}`);
+    const data = await res.json();
+
     if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText);
+      status.textContent = `❌ ${data.error || 'Token fetch failed'}`;
+      return;
     }
 
-    const { token, room } = await res.json();
-    setStatus("🔗 Connecting to room...");
+    const room = new window.LiveKit.Room();
 
-    const roomInstance = new window.LiveKit.Room();
-
-    roomInstance.on(window.LiveKit.RoomEvent.ParticipantConnected, (participant) => {
-      console.log(`✅ ${participant.identity} joined`);
-      const list = document.getElementById("attendeeList");
-      if (list) {
-        const li = document.createElement("li");
-        li.textContent = participant.identity;
-        li.id = `participant-${participant.sid}`;
-        list.appendChild(li);
-      }
+    room.on(window.LiveKit.RoomEvent.ParticipantConnected, participant => {
+      const li = document.createElement('li');
+      li.id = `participant-${participant.sid}`;
+      li.textContent = participant.identity;
+      if (attendeeList) attendeeList.appendChild(li);
     });
 
-    roomInstance.on(window.LiveKit.RoomEvent.ParticipantDisconnected, (participant) => {
+    room.on(window.LiveKit.RoomEvent.ParticipantDisconnected, participant => {
       const li = document.getElementById(`participant-${participant.sid}`);
       if (li) li.remove();
     });
 
-    roomInstance.on(window.LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-      if (track.kind === "video") {
-        const container = document.getElementById("videoContainer");
-        if (container) {
-          const videoEl = track.attach();
-          videoEl.style.maxWidth = "100%";
-          videoEl.style.cursor = "zoom-in";
-          videoEl.onclick = () => {
-            const zoomed = videoEl.style.transform === "scale(2)";
-            videoEl.style.transform = zoomed ? "scale(1)" : "scale(2)";
-            videoEl.style.transition = "transform 0.2s";
-          };
-          container.innerHTML = "";
-          container.appendChild(videoEl);
-        }
+    room.on(window.LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      if (track.kind === 'video') {
+        const videoElement = document.createElement('video');
+        videoElement.autoplay = true;
+        videoElement.playsInline = true;
+        videoElement.controls = true;
+        videoElement.style.maxWidth = '100%';
+        videoElement.onclick = () => {
+          videoElement.requestFullscreen();
+        };
+        track.attach(videoElement);
+        if (videoContainer) videoContainer.appendChild(videoElement);
+      } else if (track.kind === 'audio') {
+        const audioElement = track.attach();
+        document.body.appendChild(audioElement);
       }
     });
 
-    await roomInstance.connect(room, token);
-    setStatus("✅ Connected");
+    await room.connect(data.room, data.token);
+    status.textContent = "✅ You are live!";
 
-    if (role === "lecturer") {
-      setStatus("🎙 Publishing audio...");
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const audioTrack = new window.LiveKit.LocalAudioTrack(micStream.getAudioTracks()[0]);
-      await roomInstance.localParticipant.publishTrack(audioTrack);
+    if (role === 'lecturer') {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioTrack = new window.LiveKit.LocalAudioTrack(audioStream.getAudioTracks()[0]);
+      await room.localParticipant.publishTrack(audioTrack);
 
-      setStatus("🖥 Starting screenshare...");
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const screenTrack = new window.LiveKit.LocalVideoTrack(screenStream.getVideoTracks()[0]);
-      await roomInstance.localParticipant.publishTrack(screenTrack);
-
-      setStatus("🚀 You are live!");
+      await room.localParticipant.publishTrack(screenTrack);
     }
   } catch (err) {
-    console.error("❌ Connection failed:", err);
-    setStatus(`❌ ${err.message}`);
+    console.error(err);
+    status.textContent = `❌ Go Live failed: ${err.message}`;
   }
 }
