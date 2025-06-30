@@ -1,41 +1,46 @@
-import express from "express";
-import dotenv from "dotenv";
-import { AccessToken } from "livekit-server-sdk";
-
-dotenv.config();
-
-const {
-  LIVEKIT_URL, LIVEKIT_API_KEY,
-  LIVEKIT_API_SECRET, LECTURER_PASSWORD
-} = process.env;
+require('dotenv').config();
+const express = require('express');
+const { AccessToken } = require('livekit-server-sdk');
+const path = require('path');
 
 const app = express();
-const log = (lvl, msg) => console.log(`[${lvl}] ${msg}`);
+const PORT = process.env.PORT || 3000;
 
+app.use(express.static('public'));
 app.use(express.json());
-app.use(express.static("public"));
 
-app.get("/", (req, res) => res.redirect("/attendee.html"));
-
-app.post("/lecturer/login", (req, res) => {
-  const { password } = req.body;
-  if (password !== LECTURER_PASSWORD) return res.status(401).json({ error: "Invalid password" });
-
-  const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
-    identity: "Moez",
-    name: "Moez"
+function createToken(identity, isLecturer = false) {
+  const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
+    identity,
+    ttl: 60 * 60, // 1 hour
   });
 
   at.addGrant({
-    roomJoin: true, room: "*",
-    canPublish: true, canSubscribe: true,
-    audio: true, video: false
+    roomJoin: true,
+    room: 'main-room',
+    canPublish: isLecturer,
+    canSubscribe: true,
   });
 
-  const jwt = at.toJwt();
-  log("INFO", `Lecturer authenticated`);
-  res.json({ token: jwt, url: LIVEKIT_URL });
+  return at.toJwt();
+}
+
+app.post('/token', (req, res) => {
+  const { role, password } = req.body;
+
+  if (role === 'lecturer') {
+    if (password !== process.env.LECTURER_PASSWORD) {
+      return res.status(403).json({ error: 'Invalid password' });
+    }
+    const token = createToken('lecturer-' + Date.now(), true);
+    return res.json({ token, url: process.env.LIVEKIT_URL });
+  }
+
+  // Viewer
+  const token = createToken('viewer-' + Date.now(), false);
+  return res.json({ token, url: process.env.LIVEKIT_URL });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => log("INFO", `Server started on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});

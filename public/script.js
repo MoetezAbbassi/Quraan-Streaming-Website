@@ -1,65 +1,64 @@
-async function connectToRoom(identity, role, password = '') {
-  const status = document.getElementById('status');
-  const attendeeList = document.getElementById('attendeeList');
-  const videoContainer = document.getElementById('videoContainer');
+import {
+  Room,
+  RemoteParticipant,
+  RoomEvent,
+  LocalAudioTrack,
+  LocalVideoTrack,
+  createLocalVideoTrack,
+  createLocalAudioTrack
+} from "https://cdn.skypack.dev/livekit-client";
 
-  status.textContent = "Connecting...";
+const LIVEKIT_URL = location.origin.replace(/^http/, 'ws');
+const ROOM_NAME = 'main';
+let room;
 
-  try {
-    const res = await fetch(`/token?identity=${encodeURIComponent(identity)}&role=${role}&password=${encodeURIComponent(password)}`);
-    const data = await res.json();
-
-    if (!res.ok) {
-      status.textContent = `❌ ${data.error || 'Token fetch failed'}`;
-      return;
-    }
-
-    const room = new window.Livekit.Room();
-
-    room.on(window.Livekit.RoomEvent.ParticipantConnected, participant => {
-      const li = document.createElement('li');
-      li.id = `participant-${participant.sid}`;
-      li.textContent = participant.identity;
-      if (attendeeList) attendeeList.appendChild(li);
-    });
-
-    room.on(window.Livekit.RoomEvent.ParticipantDisconnected, participant => {
-      const li = document.getElementById(`participant-${participant.sid}`);
-      if (li) li.remove();
-    });
-
-    room.on(window.Livekit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-      if (track.kind === 'video') {
-        const videoElement = document.createElement('video');
-        videoElement.autoplay = true;
-        videoElement.playsInline = true;
-        videoElement.controls = true;
-        videoElement.style.maxWidth = '100%';
-        videoElement.onclick = () => {
-          videoElement.requestFullscreen();
-        };
-        track.attach(videoElement);
-        if (videoContainer) videoContainer.appendChild(videoElement);
-      } else if (track.kind === 'audio') {
-        const audioElement = track.attach();
-        document.body.appendChild(audioElement);
-      }
-    });
-
-    await room.connect(data.room, data.token);
-    status.textContent = "✅ You are live!";
-
-    if (role === 'lecturer') {
-      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const audioTrack = new window.Livekit.LocalAudioTrack(audioStream.getAudioTracks()[0]);
-      await room.localParticipant.publishTrack(audioTrack);
-
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const screenTrack = new window.Livekit.LocalVideoTrack(screenStream.getVideoTracks()[0]);
-      await room.localParticipant.publishTrack(screenTrack);
-    }
-  } catch (err) {
-    console.error(err);
-    status.textContent = `❌ Go Live failed: ${err.message}`;
-  }
+async function fetchToken(name, role, password = '') {
+  const res = await fetch(`/token?identity=${encodeURIComponent(name)}&room=${ROOM_NAME}&role=${role}&password=${password}`);
+  const data = await res.json();
+  return data.token;
 }
+
+window.joinAsViewer = async function () {
+  const name = document.getElementById('name').value;
+  const token = await fetchToken(name, 'viewer');
+
+  room = new Room();
+  room.on(RoomEvent.TrackSubscribed, (track) => {
+    if (track.kind === 'video') {
+      const el = track.attach();
+      document.body.appendChild(el);
+    } else if (track.kind === 'audio') {
+      track.attach().play();
+    }
+  });
+
+  await room.connect(LIVEKIT_URL, token);
+};
+
+window.joinAsLecturer = async function () {
+  const name = document.getElementById('name').value;
+  const password = document.getElementById('password').value;
+  const token = await fetchToken(name, 'lecturer', password);
+
+  room = new Room();
+  await room.connect(LIVEKIT_URL, token);
+
+  const audio = await createLocalAudioTrack();
+  await room.localParticipant.publishTrack(audio);
+
+  const video = await createLocalVideoTrack({ facingMode: 'environment' });
+  await room.localParticipant.publishTrack(video);
+
+  const list = document.getElementById('attendeeList');
+  room.on(RoomEvent.ParticipantConnected, (participant) => {
+    const li = document.createElement('li');
+    li.innerText = participant.identity;
+    li.id = `user-${participant.identity}`;
+    list.appendChild(li);
+  });
+
+  room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+    const el = document.getElementById(`user-${participant.identity}`);
+    if (el) el.remove();
+  });
+};

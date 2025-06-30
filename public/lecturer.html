@@ -1,102 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Lecturer Panel — Quraan Stream</title>
+  <title>Lecturer Panel</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- Official LiveKit UMD bundle -->
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.14.0/dist/livekit-client.umd.min.js"></script>
 </head>
 <body>
-  <header><h1>Lecturer Dashboard</h1></header>
   <div class="container">
-    <div id="login-panel">
-      <input type="password" id="pwd" placeholder="Lecturer Password" />
-      <button id="btnLogin" type="button" class="btn">Login</button>
-    </div>
-    <div id="stream-panel" class="hidden">
-      <h2>Screen Preview + Controls</h2>
-      <video id="preview" autoplay muted></video>
-      <div class="controls">
-        <button id="btnShare" type="button" class="btn">🔗 Share Screen</button>
-        <button id="btnMute" type="button" class="btn">Mute Mic</button>
-        <button id="btnEnd" type="button" class="btn">End Lecture</button>
-      </div>
-    </div>
+    <h1>Start Lecture</h1>
+    <input id="name" placeholder="Lecturer Name" />
+    <input id="password" type="password" placeholder="Password" />
+    <button onclick="joinAsLecturer()">Go Live</button>
+
+    <h2>Attendees</h2>
+    <ul id="attendeeList"></ul>
   </div>
 
-  <script>
-    (async function initLecturer() {
-      console.log("[init] Setting up lecturer UI");
-
-      if (!window.LivekitClient || typeof window.LivekitClient.connect !== "function") {
-        console.error("[init] LivekitClient is not available");
-        alert("Error: LivekitClient failed to load from CDN.");
-        return;
-      }
-      const { connect } = window.LivekitClient;
-      console.log("[init] LivekitClient is available");
-
-      const loginPanel = document.getElementById("login-panel");
-      const streamPanel = document.getElementById("stream-panel");
-      const preview = document.getElementById("preview");
-      const btnLogin = document.getElementById("btnLogin");
-      const btnShare = document.getElementById("btnShare");
-      const btnMute = document.getElementById("btnMute");
-      const btnEnd = document.getElementById("btnEnd");
-
-      let room;
-      let micEnabled = true;
-
-      btnLogin.onclick = async () => {
-        console.log("[Login] clicked");
-        const pwd = document.getElementById("pwd").value;
-        try {
-          const resp = await fetch("/lecturer/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password: pwd })
-          });
-          console.log("[Login] status:", resp.status);
-          if (!resp.ok) throw new Error("Auth error");
-          const { token, url } = await resp.json();
-          room = await connect(url, token, { audio: true });
-          console.log("[LiveKit] Connected");
-
-          loginPanel.classList.add("hidden");
-          streamPanel.classList.remove("hidden");
-        } catch (e) {
-          console.error("[Login] error:", e);
-          alert("Login failed: " + e.message);
-        }
-      };
-
-      btnShare.onclick = async () => {
-        if (!room) return alert("Not connected");
-        try {
-          const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-          const [pub] = room.localParticipant.publishStream(stream);
-          preview.srcObject = new MediaStream([pub.mediaStreamTrack]);
-          console.log("[Share] screen shared");
-        } catch (e) {
-          console.error("[Share] error:", e);
-        }
-      };
-
-      btnMute.onclick = () => {
-        if (!room) return;
-        micEnabled = !micEnabled;
-        room.localParticipant.audioTracks.forEach(p => p.track.setMuted(!micEnabled));
-        btnMute.textContent = micEnabled ? "Mute Mic" : "Unmute Mic";
-        console.log("[Mute] mic enabled:", micEnabled);
-      };
-
-      btnEnd.onclick = () => {
-        if (room) room.disconnect();
-        console.log("[End] lecture ended");
-        location.reload();
-      };
-    })();
-  </script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
